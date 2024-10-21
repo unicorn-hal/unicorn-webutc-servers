@@ -1,4 +1,5 @@
 import express from 'express';
+import { SendMessage } from './module/send_message';
 
 const app = express();
 const port = 8080;
@@ -16,6 +17,10 @@ app.use((_, res, next) => {
 
 app.get('/', (_, res) => {
     res.send('Hello World!');
+});
+app.post('/send', async (req, res) => {
+    const sendMessage = new SendMessage(req, res);
+    await sendMessage.handle();
 });
 
 app.listen(port, () => {
