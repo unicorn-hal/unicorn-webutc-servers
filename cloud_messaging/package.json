@@ -1,0 +1,23 @@
+{
+  "name": "unicorn-backend-test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p .",
+    "docker:build:cloud": "docker build --platform linux/amd64 -t gcr.io/unicorn-hal/unicorn-backend-test .",
+    "docker:push": "docker push gcr.io/unicorn-hal/unicorn-backend-test",
+    "gcloud:config": "gcloud config set project unicorn-hal && gcloud auth configure-docker && gcloud auth configure-docker asia-northeast1-docker.pkg.dev",
+    "gcloud:activate": "gcloud auth activate-service-account --key-file ./scripts/utils/runner.json && gcloud config set account runner@unicorn-hal.iam.gserviceaccount.com && gcloud auth list",
+    "gcloud:deploy": "gcloud run deploy unicorn-backend-test --image gcr.io/unicorn-hal/unicorn-backend-test --platform managed --region asia-northeast1 --allow-unauthenticated",
+    "auth": "npm run gcloud:config && npm run gcloud:activate",
+    "deploy": "npm run build && npm run docker:build:cloud && npm run docker:push && npm run gcloud:deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "express": "^4.21.1",
+    "typescript": "^5.6.3"
+  }
+}
