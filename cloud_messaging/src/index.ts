@@ -20,7 +20,7 @@ app.get('/', (_, res) => {
 });
 app.post('/send', async (req, res) => {
     const sendMessage = new SendMessage(req, res);
-    await sendMessage.handle();
+    await sendMessage.useToken();
 });
 
 app.listen(port, () => {

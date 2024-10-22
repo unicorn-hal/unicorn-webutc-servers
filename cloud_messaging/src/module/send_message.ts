@@ -9,8 +9,12 @@ export class SendMessage {
         this.res = res;
     }
 
-    async handle() {
-        const { title, body, token } = this.req.body;
+    /**
+     * Send a message to a device using the Firebase Cloud Messaging token.
+     */
+    async useToken() {
+        const { title, body } = this.req.body;
+        const token = this.req.headers['x-firebase-cloud-messaging-token'] as string;
         console.log('Title:', title);
         console.log('Body:', body);
         console.log('Token:', token);
