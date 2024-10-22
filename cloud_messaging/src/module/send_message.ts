@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-
+import { CloudMessagingService } from './service/firebase/cloud_messaging_service';
 export class SendMessage {
     private req: Request;
     private res: Response;
@@ -14,6 +14,13 @@ export class SendMessage {
         console.log('Title:', title);
         console.log('Body:', body);
         console.log('Token:', token);
-        this.res.json({ message: 'Message sent' });
+
+        try {
+            const cloudMessagingService = new CloudMessagingService();
+            const res = await cloudMessagingService.sendMessage(title, body, token);
+            this.res.send(res);
+        } catch (error) {
+            this.res.status(500).send(error);
+        }
     }
 }
