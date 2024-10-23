@@ -22,6 +22,14 @@ app.post('/send', async (req, res) => {
     const sendMessage = new SendMessage(req, res);
     await sendMessage.useToken();
 });
+app.post('/multicast', async (req, res) => {
+    const sendMessage = new SendMessage(req, res);
+    await sendMessage.useMulticast();
+});
+app.post('/topic', async (req, res) => {
+    const sendMessage = new SendMessage(req, res);
+    await sendMessage.useTopic();
+});
 
 app.listen(port, () => {
     console.log(`Server started at http://localhost:${port}`);
