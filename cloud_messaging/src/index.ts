@@ -35,7 +35,7 @@ app.post('/subscribe', async (req, res) => {
     const sendMessage = new SendMessage(req, res);
     await sendMessage.subscribeToTopic();
 });
-app.get('/subscribe/topic', async (req, res) => {
+app.get('/subscribe/topic', async (_, res) => {
     const messgagingService = new CloudMessagingService();
     const topics = messgagingService.topics;
     if (!topics) {

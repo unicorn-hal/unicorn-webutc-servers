@@ -66,7 +66,7 @@ export class SendMessage {
     async subscribeToTopic() {
         const token = this.req.headers['x-firebase-cloud-messaging-token'] as string;
         const topic = this.req.body.topic as string;
-        console.log('Tokens:', token);
+        console.log('Token:', token);
         console.log('Topic:', topic);
 
         if (!this.cloudMessagingService.topics.includes(topic)) {
