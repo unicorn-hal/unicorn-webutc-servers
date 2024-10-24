@@ -73,11 +73,11 @@ export class CloudMessagingService extends FirebaseCore {
         }
     }
 
-    async subscribeToTopic(token: string, topic: string) {
+    async subscribeToTopic(tokens: string[], topic: string) {
         console.log('Subscribing to topic...');
 
         try {
-            const res = await getMessaging().subscribeToTopic(token, topic);
+            const res = await getMessaging().subscribeToTopic(tokens, topic);
             console.log('Successfully subscribed to topic:', res);
             return res;
         } catch (error) {
