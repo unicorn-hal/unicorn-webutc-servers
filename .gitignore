@@ -28,3 +28,6 @@ coverage/
 # Ignore build artifacts
 build/
 out/
+
+# Ignore Service Account JSON files
+serviceAccountKey.json
