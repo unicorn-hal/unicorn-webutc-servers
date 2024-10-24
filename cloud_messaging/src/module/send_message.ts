@@ -19,8 +19,13 @@ export class SendMessage {
      * Send a message to a device using the Firebase Cloud Messaging token.
      */
     async useToken() {
-        const token = this.req.headers['x-firebase-cloud-messaging-token'] as string;
+        const token = this.req.body.token as string;
         console.log('Token:', token);
+
+        if (!token) {
+            this.res.status(400).send('Invalid token');
+            return;
+        }
 
         try {
             const res = await this.cloudMessagingService.send(this.title, this.body, token);
@@ -37,6 +42,11 @@ export class SendMessage {
         const tokens = this.req.body.tokens as string[];
         console.log('Tokens:', tokens);
 
+        if (!tokens || tokens.length === 0) {
+            this.res.status(400).send('Invalid tokens');
+            return;
+        }
+
         try {
             const res = await this.cloudMessagingService.multicast(this.title, this.body, tokens);
             this.res.status(200).send(res);
@@ -52,6 +62,11 @@ export class SendMessage {
         const topic = this.req.body.topic as string;
         console.log('Topic:', topic);
 
+        if (!this.cloudMessagingService.topics.includes(topic)) {
+            this.res.status(400).send('Invalid topic');
+            return;
+        }
+
         try {
             const res = await this.cloudMessagingService.sendToTopic(this.title, this.body, topic);
             this.res.status(200).send(res);
@@ -64,9 +79,9 @@ export class SendMessage {
      * Subscribe a device to a topic.
      */
     async subscribeToTopic() {
-        const token = this.req.headers['x-firebase-cloud-messaging-token'] as string;
+        const tokens = this.req.body.tokens as string[];
         const topic = this.req.body.topic as string;
-        console.log('Token:', token);
+        console.log('Tokens:', tokens);
         console.log('Topic:', topic);
 
         if (!this.cloudMessagingService.topics.includes(topic)) {
@@ -75,7 +90,7 @@ export class SendMessage {
         }
 
         try {
-            const res = await this.cloudMessagingService.subscribeToTopic(token, topic);
+            const res = await this.cloudMessagingService.subscribeToTopic(tokens, topic);
             this.res.status(200).send(res);
         } catch (error) {
             this.res.status(500).send(error);

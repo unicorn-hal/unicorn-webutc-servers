@@ -36,13 +36,17 @@ app.post('/subscribe', async (req, res) => {
     await sendMessage.subscribeToTopic();
 });
 app.get('/subscribe/topic', async (_, res) => {
-    const messgagingService = new CloudMessagingService();
-    const topics = messgagingService.topics;
-    if (!topics) {
-        res.status(404).send({ message: 'No topics found' });
-        return;
+    try {
+        const messgagingService = new CloudMessagingService();
+        const topics = messgagingService.topics;
+        if (!topics) {
+            res.status(404).send({ message: 'No topics found' });
+            return;
+        }
+        res.status(200).send({ data: topics });
+    } catch (error) {
+        res.status(500).send({ error });
     }
-    res.status(200).send({ data: topics });
 });
 
 app.listen(port, () => {
