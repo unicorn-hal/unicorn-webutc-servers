@@ -2,6 +2,14 @@ import { getMessaging } from "firebase-admin/messaging";
 import { FirebaseCore } from "../core/firebase_core";
 
 export class CloudMessagingService extends FirebaseCore {
+    get topics(): string[] {
+        return [
+            'all',
+            'user',
+            'doctor',
+        ]
+    }
+
     async send(title: string, body: string, token: string) {
         const message = {
             notification: {
@@ -46,7 +54,7 @@ export class CloudMessagingService extends FirebaseCore {
 
     async sendToTopic(title: string, body: string, topic: string) {
         const message = {
-            data: {
+            notification: {
                 title,
                 body,
             },
@@ -61,6 +69,19 @@ export class CloudMessagingService extends FirebaseCore {
             return res;
         } catch (error) {
             console.error('Error sending message to topic:', error);
+            throw error;
+        }
+    }
+
+    async subscribeToTopic(token: string, topic: string) {
+        console.log('Subscribing to topic...');
+
+        try {
+            const res = await getMessaging().subscribeToTopic(token, topic);
+            console.log('Successfully subscribed to topic:', res);
+            return res;
+        } catch (error) {
+            console.error('Error subscribing to topic:', error);
             throw error;
         }
     }

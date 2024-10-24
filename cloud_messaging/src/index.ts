@@ -1,5 +1,6 @@
 import express from 'express';
 import { SendMessage } from './module/send_message';
+import { CloudMessagingService } from './module/service/firebase/cloud_messaging_service';
 
 const app = express();
 const port = 8080;
@@ -29,6 +30,19 @@ app.post('/multicast', async (req, res) => {
 app.post('/topic', async (req, res) => {
     const sendMessage = new SendMessage(req, res);
     await sendMessage.useTopic();
+});
+app.post('/subscribe', async (req, res) => {
+    const sendMessage = new SendMessage(req, res);
+    await sendMessage.subscribeToTopic();
+});
+app.get('/subscribe/topic', async (req, res) => {
+    const messgagingService = new CloudMessagingService();
+    const topics = messgagingService.topics;
+    if (!topics) {
+        res.status(404).send({ message: 'No topics found' });
+        return;
+    }
+    res.status(200).send({ data: topics });
 });
 
 app.listen(port, () => {

@@ -13,9 +13,6 @@ export class SendMessage {
         this.cloudMessagingService = new CloudMessagingService();
         this.title = this.req.body.title;
         this.body = this.req.body.body;
-
-        console.log('Title:', this.title);
-        console.log('Body:', this.body);
     }
 
     /**
@@ -27,7 +24,7 @@ export class SendMessage {
 
         try {
             const res = await this.cloudMessagingService.send(this.title, this.body, token);
-            this.res.send(res);
+            this.res.status(200).send(res);
         } catch (error) {
             this.res.status(500).send(error);
         }
@@ -42,7 +39,7 @@ export class SendMessage {
 
         try {
             const res = await this.cloudMessagingService.multicast(this.title, this.body, tokens);
-            this.res.send(res);
+            this.res.status(200).send(res);
         } catch (error) {
             this.res.status(500).send(error);
         }
@@ -57,7 +54,29 @@ export class SendMessage {
 
         try {
             const res = await this.cloudMessagingService.sendToTopic(this.title, this.body, topic);
-            this.res.send(res);
+            this.res.status(200).send(res);
+        } catch (error) {
+            this.res.status(500).send(error);
+        }
+    }
+
+    /**
+     * Subscribe a device to a topic.
+     */
+    async subscribeToTopic() {
+        const token = this.req.headers['x-firebase-cloud-messaging-token'] as string;
+        const topic = this.req.body.topic as string;
+        console.log('Tokens:', token);
+        console.log('Topic:', topic);
+
+        if (!this.cloudMessagingService.topics.includes(topic)) {
+            this.res.status(400).send('Invalid topic');
+            return;
+        }
+
+        try {
+            const res = await this.cloudMessagingService.subscribeToTopic(token, topic);
+            this.res.status(200).send(res);
         } catch (error) {
             this.res.status(500).send(error);
         }
