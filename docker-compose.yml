@@ -5,3 +5,8 @@ services:
       - "8080:8080"
     environment:
       TZ: "Asia/Tokyo"
+
+  stun_server:
+    build: ./webrtc/server/stun/.
+    ports:
+      - "3478:5349"
