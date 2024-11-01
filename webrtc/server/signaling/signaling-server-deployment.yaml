@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signaling-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: signaling-server
+  template:
+    metadata:
+      labels:
+        app: signaling-server
+    spec:
+      containers:
+      - name: signaling-server
+        image: gcr.io/unicorn-hal/signaling-server
+        ports:
+        - containerPort: 3000
