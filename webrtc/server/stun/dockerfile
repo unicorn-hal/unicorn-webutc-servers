@@ -1,0 +1,17 @@
+# ベースイメージとして最新のDebianを使用
+FROM debian:latest
+
+# 必要なパッケージのインストールとcoturnのインストール
+RUN apt-get update && \
+    apt-get install -y coturn && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# coturnの設定ファイルを配置
+COPY turnserver.conf /etc/turnserver.conf
+
+# coturnのポートを開放
+EXPOSE 3478 5349
+
+# coturnサーバーを起動
+CMD ["turnserver", "-c", "/etc/turnserver.conf"]
