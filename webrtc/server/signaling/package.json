@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -p ."
+    "build": "tsc -p .",
+    "docker:build:cloud": "docker build --platform linux/amd64 -t gcr.io/unicorn-hal/signaling-server .",
+    "docker:push": "docker push gcr.io/unicorn-hal/signaling-server",
+    "kubectl:apply": "kubectl apply -f signaling-server-deployment.yaml && kubectl apply -f signaling-server-service.yaml",
+    "deploy": "npm run build && npm run docker:build:cloud && npm run docker:push && npm run kubectl:apply"
   },
   "author": "",
   "license": "ISC",
