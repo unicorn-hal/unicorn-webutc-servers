@@ -10,3 +10,10 @@ services:
     build: ./webrtc/server/stun/.
     ports:
       - "3478:5349"
+
+  signaling_server:
+    build: ./webrtc/server/signaling/.
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: "Asia/Tokyo"
