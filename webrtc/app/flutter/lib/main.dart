@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -109,7 +111,20 @@ class _WebRTCSampleState extends State<WebRTCSample> {
         Uri.parse('ws://192.168.40.249:3000')); // Updated connection
 
     _channel.stream.listen((message) {
-      var data = json.decode(message);
+      String messageString;
+
+      if (message is String) {
+        messageString = message;
+      } else if (message is Uint8List) {
+        messageString = utf8.decode(message);
+      } else {
+        // その他の型の場合の処理
+        print('サポートされていないメッセージタイプを受信しました: ${message.runtimeType}');
+        return;
+      }
+
+      var data = json.decode(messageString);
+
       switch (data['type']) {
         case 'offer':
           _handleOffer(data);
