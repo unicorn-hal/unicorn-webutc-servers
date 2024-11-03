@@ -12,13 +12,21 @@ server.on('connection', (socket: WS) => {
             case 'offer':
             case 'answer':
             case 'candidate':
-                // Broadcast the message to all clients except the sender
+                // Broadcast the message to the target client
                 server.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN && client !== socket) {
-                        console.log('Broadcasting message:', message);
+                        console.log('Broadcasting type:', parsedMessage.type);
                         client.send(message);
                     }
                 });
+                break;
+            case 'getPeers':
+                // Send the list of connected clients back to the requester
+                const peers = Array.from(server.clients)
+                    .filter(client => client !== socket && client.readyState === WebSocket.OPEN)
+                    .map((client, index) => `peer${index}`);
+                console.log('Sending peers:', peers);
+                socket.send(JSON.stringify({ type: 'peers', peers }));
                 break;
             default:
                 console.log('Unknown message type:', parsedMessage.type);

@@ -191,6 +191,12 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     });
   }
 
+  Future<void> _fetchPeers() async {
+    _sendSignalingMessage({
+      'type': 'getPeers',
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,6 +225,10 @@ class _WebRTCSampleState extends State<WebRTCSample> {
                 child: Text(peer),
               );
             }).toList(),
+          ),
+          ElevatedButton(
+            onPressed: _fetchPeers,
+            child: Text('Refresh Peers'),
           ),
         ],
       ),
