@@ -39,6 +39,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   final _peersController = StreamController<List<String>>.broadcast();
   List<String> _peers = [];
   String? _selectedPeer;
+  // tips: サーバーから取得したuidを設定する
   // ignore: prefer_final_fields
   String _userId = 'user_a'; // Unique user ID
   bool _isMuted = false;
@@ -89,6 +90,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   Future<RTCPeerConnection> _createPeerConnection() async {
     final Map<String, dynamic> configuration = {
       'iceServers': [
+        // todo: Kubernetes のデプロイ先に合わせて変更する
         {'urls': 'stun:192.168.40.249:3478'},
       ],
     };
@@ -118,6 +120,8 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   }
 
   void _connectToSignalingServer() {
+    // todo: Kubernetes のデプロイ先に合わせて変更する
+    // シグナリングサーバーは WebSocket なので、単独で Cloud Run でも問題なさそう？
     _channel = WebSocketChannel.connect(Uri.parse('ws://192.168.40.249:3000'));
 
     _channel.stream.listen((message) {
@@ -153,7 +157,6 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       }
     });
 
-    // Register the user ID with the signaling server
     _sendSignalingMessage({
       'type': 'register',
       'userId': _userId,
@@ -213,6 +216,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     });
   }
 
+  // todo: ミュート実装は未検証
   void _toggleMute() {
     setState(() {
       _isMuted = !_isMuted;
@@ -238,6 +242,9 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     });
     _localRenderer.srcObject = null;
     _remoteRenderer.srcObject = null;
+
+    // tips: 本実装ではPeerの切断後、Navigator.popで前の画面に戻るが良さそう
+
     _createPeerConnection().then((pc) {
       _peerConnection = pc;
       _startLocalStream();
