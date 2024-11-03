@@ -17,6 +17,9 @@ server.on('connection', (socket: WS) => {
                 const userId = parsedMessage.userId;
                 users[userId] = socket;
                 console.log(`User registered: ${userId}`);
+
+                // 全てのユーザーにpeersリストを送信
+                broadcastPeers();
                 break;
             case 'offer':
             case 'answer':
@@ -31,8 +34,7 @@ server.on('connection', (socket: WS) => {
                 break;
             case 'getPeers':
                 // 接続中のユーザーIDリストを送信
-                const peers = Object.keys(users).filter(id => id !== parsedMessage.userId);
-                socket.send(JSON.stringify({ type: 'peers', peers }));
+                sendPeers(socket, parsedMessage.userId);
                 break;
             default:
                 console.log('Unknown message type:', parsedMessage.type);
@@ -46,8 +48,29 @@ server.on('connection', (socket: WS) => {
             if (users[userId] === socket) {
                 delete users[userId];
                 console.log(`User disconnected: ${userId}`);
+                // 全てのユーザーにpeersリストを送信
+                broadcastPeers();
                 break;
             }
         }
     });
 });
+
+// 全てのユーザーにpeersリストを送信する関数
+function broadcastPeers() {
+    const peers = Object.keys(users);
+    const message = JSON.stringify({ type: 'peers', peers });
+    for (const userId in users) {
+        const socket = users[userId];
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(message);
+        }
+    }
+}
+
+// 特定のソケットにpeersリストを送信する関数
+function sendPeers(socket: WS, userId: string) {
+    const peers = Object.keys(users).filter(id => id !== userId);
+    const message = JSON.stringify({ type: 'peers', peers });
+    socket.send(message);
+}

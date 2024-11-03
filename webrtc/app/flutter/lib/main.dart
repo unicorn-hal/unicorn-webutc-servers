@@ -4,24 +4,30 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dart:async';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        title: 'Flutter WebRTC Demo',
-        home: WebRTCSample(),
-        debugShowCheckedModeBanner: false);
+    return const MaterialApp(
+      title: 'Flutter WebRTC Demo',
+      home: WebRTCSample(),
+      debugShowCheckedModeBanner: false,
+    );
   }
 }
 
 class WebRTCSample extends StatefulWidget {
+  const WebRTCSample({super.key});
+
   @override
-  _WebRTCSampleState createState() => _WebRTCSampleState();
+  State<WebRTCSample> createState() => _WebRTCSampleState();
 }
 
 class _WebRTCSampleState extends State<WebRTCSample> {
@@ -30,8 +36,10 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   late WebSocketChannel _channel;
   final _remoteRenderer = RTCVideoRenderer();
   final _localRenderer = RTCVideoRenderer();
+  final _peersController = StreamController<List<String>>.broadcast();
   List<String> _peers = [];
   String? _selectedPeer;
+  // ignore: prefer_final_fields
   String _userId = 'user_a'; // Unique user ID
 
   @override
@@ -51,6 +59,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     _remoteRenderer.dispose();
     _peerConnection.close();
     _channel.sink.close();
+    _peersController.close();
     super.dispose();
   }
 
@@ -85,20 +94,18 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     final pc = await createPeerConnection(configuration);
 
     pc.onIceCandidate = (RTCIceCandidate candidate) {
-      if (candidate != null) {
-        print('Sending ICE candidate to peer: ${candidate.toMap()}');
-        _sendSignalingMessage({
-          'type': 'candidate',
-          'candidate': candidate.toMap(),
-          'targetId': _selectedPeer,
-          'userId': _userId, // 自身の userId を追加
-        });
-      }
+      debugPrint('Sending ICE candidate to peer: ${candidate.toMap()}');
+      _sendSignalingMessage({
+        'type': 'candidate',
+        'candidate': candidate.toMap(),
+        'targetId': _selectedPeer,
+        'userId': _userId, // 自身の userId を追加
+      });
     };
 
     pc.onTrack = (RTCTrackEvent event) {
       if (event.track.kind == 'video') {
-        print('Received remote video track');
+        debugPrint('Received remote video track');
         setState(() {
           _remoteRenderer.srcObject = event.streams.first;
         });
@@ -119,7 +126,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       } else if (message is Uint8List) {
         messageString = utf8.decode(message);
       } else {
-        print('Unsupported message type received: ${message.runtimeType}');
+        debugPrint('Unsupported message type received: ${message.runtimeType}');
         return;
       }
 
@@ -136,9 +143,8 @@ class _WebRTCSampleState extends State<WebRTCSample> {
           _handleCandidate(data);
           break;
         case 'peers':
-          setState(() {
-            _peers = List<String>.from(data['peers']);
-          });
+          _peers = List<String>.from(data['peers']);
+          _peersController.add(_peers);
           break;
         default:
           break;
@@ -189,7 +195,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   Future<void> _createOffer() async {
     if (_selectedPeer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select a peer to connect to.')),
+        const SnackBar(content: Text('Please select a peer to connect to.')),
       );
       return;
     }
@@ -205,52 +211,67 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     });
   }
 
-  Future<void> _fetchPeers() async {
-    _sendSignalingMessage({
-      'type': 'getPeers',
-      'userId': _userId,
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Flutter WebRTC Demo'),
+        title: const Text('Flutter WebRTC Demo'),
       ),
-      body: Column(
+      body: Row(
         children: [
           Expanded(
-            child: RTCVideoView(_localRenderer, mirror: true),
+            flex: 2,
+            child: Column(
+              children: [
+                Expanded(
+                  child: RTCVideoView(_localRenderer, mirror: true),
+                ),
+                Expanded(
+                  child: RTCVideoView(_remoteRenderer),
+                ),
+              ],
+            ),
           ),
           Expanded(
-            child: RTCVideoView(_remoteRenderer),
-          ),
-          DropdownButton<String>(
-            hint: Text('Select Peer'),
-            value: _selectedPeer,
-            onChanged: (String? newValue) {
-              setState(() {
-                _selectedPeer = newValue;
-              });
-            },
-            items: _peers.map<DropdownMenuItem<String>>((String peer) {
-              return DropdownMenuItem<String>(
-                value: peer,
-                child: Text(peer),
-              );
-            }).toList(),
-          ),
-          ElevatedButton(
-            onPressed: _fetchPeers,
-            child: Text('Refresh Peers'),
+            flex: 1,
+            child: Column(
+              children: [
+                Expanded(
+                  child: StreamBuilder<List<String>>(
+                    stream: _peersController.stream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircularProgressIndicator();
+                      }
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      }
+                      snapshot.data!
+                          .removeWhere((element) => element == _userId);
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Text('No peers available');
+                      }
+                      return ListView.builder(
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(snapshot.data![index]),
+                            onTap: () {
+                              setState(() {
+                                _selectedPeer = snapshot.data![index];
+                              });
+                              _createOffer();
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createOffer,
-        tooltip: 'Start Call',
-        child: Icon(Icons.phone),
       ),
     );
   }
