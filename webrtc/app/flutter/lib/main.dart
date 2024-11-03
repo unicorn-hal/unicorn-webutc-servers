@@ -32,8 +32,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   final _localRenderer = RTCVideoRenderer();
   List<String> _peers = [];
   String? _selectedPeer;
-  String _userId =
-      'user_${DateTime.now().millisecondsSinceEpoch}'; // Unique user ID
+  String _userId = 'user_a'; // Unique user ID
 
   @override
   void initState() {
@@ -87,16 +86,19 @@ class _WebRTCSampleState extends State<WebRTCSample> {
 
     pc.onIceCandidate = (RTCIceCandidate candidate) {
       if (candidate != null) {
+        print('Sending ICE candidate to peer: ${candidate.toMap()}');
         _sendSignalingMessage({
           'type': 'candidate',
           'candidate': candidate.toMap(),
           'targetId': _selectedPeer,
+          'userId': _userId, // 自身の userId を追加
         });
       }
     };
 
     pc.onTrack = (RTCTrackEvent event) {
       if (event.track.kind == 'video') {
+        print('Received remote video track');
         setState(() {
           _remoteRenderer.srcObject = event.streams.first;
         });
@@ -164,7 +166,8 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     _sendSignalingMessage({
       'type': 'answer',
       'sdp': answer.sdp,
-      'targetId': data['userId'],
+      'targetId': data['userId'], // オファー送信者の userId を使用
+      'userId': _userId, // 自身の userId を追加
     });
   }
 
@@ -198,6 +201,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       'type': 'offer',
       'sdp': offer.sdp,
       'targetId': _selectedPeer,
+      'userId': _userId, // 自身の userId を追加
     });
   }
 
