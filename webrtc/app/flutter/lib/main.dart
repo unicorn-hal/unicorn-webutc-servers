@@ -27,9 +27,11 @@ class WebRTCSample extends StatefulWidget {
 class _WebRTCSampleState extends State<WebRTCSample> {
   late RTCPeerConnection _peerConnection;
   late MediaStream _localStream;
-  late WebSocketChannel _channel; // Changed type
+  late WebSocketChannel _channel;
   final _remoteRenderer = RTCVideoRenderer();
   final _localRenderer = RTCVideoRenderer();
+  List<String> _peers = [];
+  String? _selectedPeer;
 
   @override
   void initState() {
@@ -61,16 +63,12 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       'audio': true,
       'video': {
         'facingMode': 'user',
-        // Optional resolution constraints
-        // 'width': {'ideal': 1280},
-        // 'height': {'ideal': 720},
       }
     };
 
     _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     _localRenderer.srcObject = _localStream;
 
-    // Add local tracks to peer connection
     _localStream.getTracks().forEach((track) {
       _peerConnection.addTrack(track, _localStream);
     });
@@ -94,7 +92,6 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       }
     };
 
-    // Use onTrack instead of onAddStream
     pc.onTrack = (RTCTrackEvent event) {
       if (event.track.kind == 'video') {
         setState(() {
@@ -107,8 +104,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   }
 
   void _connectToSignalingServer() {
-    _channel = WebSocketChannel.connect(
-        Uri.parse('ws://192.168.40.249:3000')); // Updated connection
+    _channel = WebSocketChannel.connect(Uri.parse('ws://192.168.40.249:3000'));
 
     _channel.stream.listen((message) {
       String messageString;
@@ -118,8 +114,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       } else if (message is Uint8List) {
         messageString = utf8.decode(message);
       } else {
-        // その他の型の場合の処理
-        print('サポートされていないメッセージタイプを受信しました: ${message.runtimeType}');
+        print('Unsupported message type received: ${message.runtimeType}');
         return;
       }
 
@@ -134,6 +129,11 @@ class _WebRTCSampleState extends State<WebRTCSample> {
           break;
         case 'candidate':
           _handleCandidate(data);
+          break;
+        case 'peers':
+          setState(() {
+            _peers = List<String>.from(data['peers']);
+          });
           break;
         default:
           break;
@@ -174,12 +174,20 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   }
 
   Future<void> _createOffer() async {
+    if (_selectedPeer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a peer to connect to.')),
+      );
+      return;
+    }
+
     RTCSessionDescription offer = await _peerConnection.createOffer();
     await _peerConnection.setLocalDescription(offer);
 
     _sendSignalingMessage({
       'type': 'offer',
       'sdp': offer.sdp,
+      'target': _selectedPeer,
     });
   }
 
@@ -196,6 +204,21 @@ class _WebRTCSampleState extends State<WebRTCSample> {
           ),
           Expanded(
             child: RTCVideoView(_remoteRenderer),
+          ),
+          DropdownButton<String>(
+            hint: Text('Select Peer'),
+            value: _selectedPeer,
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedPeer = newValue;
+              });
+            },
+            items: _peers.map<DropdownMenuItem<String>>((String peer) {
+              return DropdownMenuItem<String>(
+                value: peer,
+                child: Text(peer),
+              );
+            }).toList(),
           ),
         ],
       ),
