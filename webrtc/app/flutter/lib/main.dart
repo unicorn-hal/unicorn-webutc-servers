@@ -75,7 +75,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   Future<RTCPeerConnection> _createPeerConnection() async {
     final Map<String, dynamic> configuration = {
       'iceServers': [
-        {'urls': 'stun:localhost:3478'},
+        {'urls': 'stun:192.168.40.249:3478'},
       ],
     };
 
@@ -102,10 +102,12 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   }
 
   void _connectToSignalingServer() {
-    _channel = WebSocketChannel.connect(Uri.parse('ws://localhost:3000'));
+    _channel = WebSocketChannel.connect(Uri.parse('ws://192.168.40.249:3000'));
+    print('Connected to signaling server: ${_channel.sink}');
 
     _channel.stream.listen((message) {
       var data = json.decode(message);
+      print('Received message: $data');
       switch (data['type']) {
         case 'offer':
           _handleOffer(data);
@@ -125,6 +127,9 @@ class _WebRTCSampleState extends State<WebRTCSample> {
           break;
       }
     });
+
+    // Request the list of peers when connected
+    _sendSignalingMessage({'type': 'peers'});
   }
 
   void _sendSignalingMessage(Map<String, dynamic> message) {
