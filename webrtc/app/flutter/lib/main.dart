@@ -41,6 +41,8 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   String? _selectedPeer;
   // ignore: prefer_final_fields
   String _userId = 'user_a'; // Unique user ID
+  bool _isMuted = false;
+  bool _isCameraOff = false;
 
   @override
   void initState() {
@@ -211,65 +213,137 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     });
   }
 
+  void _toggleMute() {
+    setState(() {
+      _isMuted = !_isMuted;
+      _localStream.getAudioTracks().forEach((track) {
+        track.enabled = !_isMuted;
+      });
+    });
+  }
+
+  void _toggleCamera() {
+    setState(() {
+      _isCameraOff = !_isCameraOff;
+      _localStream.getVideoTracks().forEach((track) {
+        track.enabled = !_isCameraOff;
+      });
+    });
+  }
+
+  void _endCall() {
+    _peerConnection.close();
+    _localStream.getTracks().forEach((track) {
+      track.stop();
+    });
+    _localRenderer.srcObject = null;
+    _remoteRenderer.srcObject = null;
+    _createPeerConnection().then((pc) {
+      _peerConnection = pc;
+      _startLocalStream();
+    });
+
+    setState(() {
+      _selectedPeer = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Flutter WebRTC Demo'),
+        title: Text('Flutter WebRTC Demo - $_userId'),
       ),
-      body: Row(
+      body: Column(
         children: [
           Expanded(
-            flex: 2,
-            child: Column(
+            child: Row(
               children: [
                 Expanded(
-                  child: RTCVideoView(_localRenderer, mirror: true),
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: RTCVideoView(_localRenderer, mirror: true),
+                      ),
+                      Expanded(
+                        child: RTCVideoView(_remoteRenderer),
+                      ),
+                    ],
+                  ),
                 ),
                 Expanded(
-                  child: RTCVideoView(_remoteRenderer),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Column(
-              children: [
-                Expanded(
-                  child: StreamBuilder<List<String>>(
-                    stream: _peersController.stream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const CircularProgressIndicator();
-                      }
-                      if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                      }
-                      snapshot.data!
-                          .removeWhere((element) => element == _userId);
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Text('No peers available');
-                      }
-                      return ListView.builder(
-                        itemCount: snapshot.data!.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            title: Text(snapshot.data![index]),
-                            onTap: () {
-                              setState(() {
-                                _selectedPeer = snapshot.data![index];
-                              });
-                              _createOffer();
-                            },
-                          );
-                        },
-                      );
-                    },
+                  flex: 1,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: StreamBuilder<List<String>>(
+                          stream: _peersController.stream,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const CircularProgressIndicator();
+                            }
+                            if (snapshot.hasError) {
+                              return Text('Error: ${snapshot.error}');
+                            }
+                            snapshot.data!
+                                .removeWhere((element) => element == _userId);
+                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                              return const Text('No peers available');
+                            }
+                            return ListView.builder(
+                              itemCount: snapshot.data!.length,
+                              itemBuilder: (context, index) {
+                                final peer = snapshot.data![index];
+                                final isSelected = peer == _selectedPeer;
+                                return ListTile(
+                                  title: Text(
+                                    peer,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.green
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  tileColor:
+                                      isSelected ? Colors.green[100] : null,
+                                  onTap: isSelected
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _selectedPeer = peer;
+                                          });
+                                          _createOffer();
+                                        },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                icon: Icon(_isMuted ? Icons.mic_off : Icons.mic),
+                onPressed: _toggleMute,
+              ),
+              IconButton(
+                icon: Icon(_isCameraOff ? Icons.videocam_off : Icons.videocam),
+                onPressed: _toggleCamera,
+              ),
+              IconButton(
+                icon: const Icon(Icons.call_end),
+                onPressed: _endCall,
+              ),
+            ],
           ),
         ],
       ),
