@@ -9,7 +9,7 @@ services:
   stun_server:
     build: ./webrtc/server/stun/.
     ports:
-      - "3478:5349"
+      - "3478:3478"
 
   signaling_server:
     build: ./webrtc/server/signaling/.
