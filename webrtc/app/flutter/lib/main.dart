@@ -1,9 +1,9 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'dart:convert';
 
 void main() {
   runApp(MyApp());
@@ -32,6 +32,8 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   final _localRenderer = RTCVideoRenderer();
   List<String> _peers = [];
   String? _selectedPeer;
+  String _userId =
+      'user_${DateTime.now().millisecondsSinceEpoch}'; // Unique user ID
 
   @override
   void initState() {
@@ -88,6 +90,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
         _sendSignalingMessage({
           'type': 'candidate',
           'candidate': candidate.toMap(),
+          'targetId': _selectedPeer,
         });
       }
     };
@@ -139,6 +142,12 @@ class _WebRTCSampleState extends State<WebRTCSample> {
           break;
       }
     });
+
+    // Register the user ID with the signaling server
+    _sendSignalingMessage({
+      'type': 'register',
+      'userId': _userId,
+    });
   }
 
   void _sendSignalingMessage(Map<String, dynamic> message) {
@@ -155,6 +164,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     _sendSignalingMessage({
       'type': 'answer',
       'sdp': answer.sdp,
+      'targetId': data['userId'],
     });
   }
 
@@ -187,13 +197,14 @@ class _WebRTCSampleState extends State<WebRTCSample> {
     _sendSignalingMessage({
       'type': 'offer',
       'sdp': offer.sdp,
-      'target': _selectedPeer,
+      'targetId': _selectedPeer,
     });
   }
 
   Future<void> _fetchPeers() async {
     _sendSignalingMessage({
       'type': 'getPeers',
+      'userId': _userId,
     });
   }
 

@@ -2,6 +2,9 @@ import WebSocket, { Server, WebSocket as WS } from 'ws';
 
 const server = new Server({ port: 3000 });
 
+// ユーザーIDとソケットをマッピングするオブジェクト
+const users: { [key: string]: WS } = {};
+
 server.on('connection', (socket: WS) => {
     console.log('Client connected');
 
@@ -9,31 +12,42 @@ server.on('connection', (socket: WS) => {
         const parsedMessage = JSON.parse(message);
 
         switch (parsedMessage.type) {
+            case 'register':
+                // ユーザーIDを登録
+                const userId = parsedMessage.userId;
+                users[userId] = socket;
+                console.log(`User registered: ${userId}`);
+                break;
             case 'offer':
             case 'answer':
             case 'candidate':
-                // Broadcast the message to the target client
-                server.clients.forEach(client => {
-                    if (client.readyState === WebSocket.OPEN && client !== socket) {
-                        console.log('Broadcasting type:', parsedMessage.type);
-                        client.send(message);
-                    }
-                });
+                // ターゲットユーザーにメッセージを送信
+                const targetId = parsedMessage.targetId;
+                const targetSocket = users[targetId];
+                if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+                    console.log(`Sending ${parsedMessage.type} to ${targetId}`);
+                    targetSocket.send(message);
+                }
                 break;
             case 'getPeers':
-                // Send the list of connected clients back to the requester
-                const peers = Array.from(server.clients)
-                    .filter(client => client !== socket && client.readyState === WebSocket.OPEN)
-                    .map((client, index) => `peer${index}`);
-                console.log('Sending peers:', peers);
+                // 接続中のユーザーIDリストを送信
+                const peers = Object.keys(users).filter(id => id !== parsedMessage.userId);
                 socket.send(JSON.stringify({ type: 'peers', peers }));
                 break;
             default:
                 console.log('Unknown message type:', parsedMessage.type);
+                break;
         }
     });
 
     socket.on('close', () => {
-        console.log('Client disconnected');
+        // 切断時にユーザーを削除
+        for (const userId in users) {
+            if (users[userId] === socket) {
+                delete users[userId];
+                console.log(`User disconnected: ${userId}`);
+                break;
+            }
+        }
     });
 });
