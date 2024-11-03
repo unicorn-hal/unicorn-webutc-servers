@@ -20,6 +20,14 @@ server.on('connection', (socket: WS) => {
                     }
                 });
                 break;
+            case 'peers':
+                // Send the list of connected peers to the sender
+                const peers = Array.from(server.clients)
+                    .filter(client => client.readyState === WebSocket.OPEN)
+                    .map(client => client.url);
+                console.log('Sending peers:', peers);
+                socket.send(JSON.stringify({ type: 'peers', peers }));
+                break;
             default:
                 console.log('Unknown message type:', parsedMessage.type);
         }
