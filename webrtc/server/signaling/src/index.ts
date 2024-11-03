@@ -6,12 +6,23 @@ server.on('connection', (socket: WS) => {
     console.log('Client connected');
 
     socket.on('message', (message: string) => {
-        // メッセージをすべてのクライアントにブロードキャスト
-        server.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN && client !== socket) {
-                client.send(message);
-            }
-        });
+        const parsedMessage = JSON.parse(message);
+
+        switch (parsedMessage.type) {
+            case 'offer':
+            case 'answer':
+            case 'candidate':
+                // Broadcast the message to all clients except the sender
+                server.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN && client !== socket) {
+                        console.log('Broadcasting message:', message);
+                        client.send(message);
+                    }
+                });
+                break;
+            default:
+                console.log('Unknown message type:', parsedMessage.type);
+        }
     });
 
     socket.on('close', () => {
