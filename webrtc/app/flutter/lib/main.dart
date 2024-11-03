@@ -25,11 +25,9 @@ class WebRTCSample extends StatefulWidget {
 class _WebRTCSampleState extends State<WebRTCSample> {
   late RTCPeerConnection _peerConnection;
   late MediaStream _localStream;
-  late WebSocketChannel _channel;
+  late WebSocketChannel _channel; // Changed type
   final _remoteRenderer = RTCVideoRenderer();
   final _localRenderer = RTCVideoRenderer();
-  List<String> _peers = []; // List to store available peers
-  String? _selectedPeer; // Selected peer
 
   @override
   void initState() {
@@ -61,12 +59,16 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       'audio': true,
       'video': {
         'facingMode': 'user',
+        // Optional resolution constraints
+        // 'width': {'ideal': 1280},
+        // 'height': {'ideal': 720},
       }
     };
 
     _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     _localRenderer.srcObject = _localStream;
 
+    // Add local tracks to peer connection
     _localStream.getTracks().forEach((track) {
       _peerConnection.addTrack(track, _localStream);
     });
@@ -90,6 +92,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       }
     };
 
+    // Use onTrack instead of onAddStream
     pc.onTrack = (RTCTrackEvent event) {
       if (event.track.kind == 'video') {
         setState(() {
@@ -102,12 +105,11 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   }
 
   void _connectToSignalingServer() {
-    _channel = WebSocketChannel.connect(Uri.parse('ws://192.168.40.249:3000'));
-    print('Connected to signaling server: ${_channel.sink}');
+    _channel = WebSocketChannel.connect(
+        Uri.parse('ws://192.168.40.249:3000')); // Updated connection
 
     _channel.stream.listen((message) {
       var data = json.decode(message);
-      print('Received message: $data');
       switch (data['type']) {
         case 'offer':
           _handleOffer(data);
@@ -118,18 +120,10 @@ class _WebRTCSampleState extends State<WebRTCSample> {
         case 'candidate':
           _handleCandidate(data);
           break;
-        case 'peers':
-          setState(() {
-            _peers = List<String>.from(data['peers']);
-          });
-          break;
         default:
           break;
       }
     });
-
-    // Request the list of peers when connected
-    _sendSignalingMessage({'type': 'peers'});
   }
 
   void _sendSignalingMessage(Map<String, dynamic> message) {
@@ -165,43 +159,13 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   }
 
   Future<void> _createOffer() async {
-    if (_selectedPeer == null) return;
-
     RTCSessionDescription offer = await _peerConnection.createOffer();
     await _peerConnection.setLocalDescription(offer);
 
     _sendSignalingMessage({
       'type': 'offer',
       'sdp': offer.sdp,
-      'target': _selectedPeer,
     });
-  }
-
-  void _showPeerSelectionDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Peer'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: _peers.map((peer) {
-                return ListTile(
-                  title: Text(peer),
-                  onTap: () {
-                    setState(() {
-                      _selectedPeer = peer;
-                    });
-                    Navigator.of(context).pop();
-                    _createOffer();
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -221,7 +185,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showPeerSelectionDialog,
+        onPressed: _createOffer,
         tooltip: 'Start Call',
         child: Icon(Icons.phone),
       ),
