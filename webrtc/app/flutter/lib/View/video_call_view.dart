@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:webrtc_test_flutter/Controller/video_call_controller.dart';
 
-class VoiceCallView extends StatefulWidget {
-  const VoiceCallView({super.key});
+class VideoCallView extends StatefulWidget {
+  const VideoCallView({super.key});
 
   @override
-  State<VoiceCallView> createState() => _VoiceCallViewState();
+  State<VideoCallView> createState() => _VideoCallViewState();
 }
 
-class _VoiceCallViewState extends State<VoiceCallView> {
-  late VoiceCallController _controller;
+class _VideoCallViewState extends State<VideoCallView> {
+  late VideoCallController _controller;
 
   @override
   void initState() {
@@ -19,7 +19,7 @@ class _VoiceCallViewState extends State<VoiceCallView> {
     final doctorUid = queryParams['doctorUid'] ?? '';
     final calleeUid = queryParams['calleeUid'] ?? '';
     _controller =
-        VoiceCallController(doctorUid: doctorUid, calleeUid: calleeUid);
+        VideoCallController(doctorUid: doctorUid, calleeUid: calleeUid);
     _controller.isCallConnected.addListener(() {
       setState(() {}); // 通話状態が変化したら画面を更新
     });

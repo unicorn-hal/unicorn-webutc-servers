@@ -6,7 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:webrtc_test_flutter/Service/log_service.dart';
 
-class VoiceCallController {
+class VideoCallController {
   final String calleeUid; // 通話を受信する相手のUID
   final String doctorUid; // 通話を発信する医師のUID
   late RTCPeerConnection peerConnection;
@@ -19,7 +19,7 @@ class VoiceCallController {
   bool isCameraOff = false;
   ValueNotifier<bool> isCallConnected = ValueNotifier(false);
 
-  VoiceCallController({required this.doctorUid, required this.calleeUid}) {
+  VideoCallController({required this.doctorUid, required this.calleeUid}) {
     initialize();
   }
 
