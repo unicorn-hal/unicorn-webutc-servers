@@ -6,6 +6,8 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:async';
 
+import 'package:webrtc_test_flutter/View/video_call_view.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -37,22 +39,31 @@ class _WebRTCSampleState extends State<WebRTCSample> {
   final _remoteRenderer = RTCVideoRenderer();
   final _localRenderer = RTCVideoRenderer();
   final _peersController = StreamController<List<String>>.broadcast();
-  List<String> _peers = [];
   String? _selectedPeer;
-  // tips: サーバーから取得したuidを設定する
-  // ignore: prefer_final_fields
-  String _userId = 'user_a'; // Unique user ID
+
+  late String _doctorUid;
+  late String _calleeUid;
   bool _isMuted = false;
   bool _isCameraOff = false;
+
+  ValueNotifier<bool> isCallConnected = ValueNotifier(false);
 
   @override
   void initState() {
     super.initState();
+    final queryParams = Uri.base.queryParameters;
+    _doctorUid = queryParams['doctorUid'] ?? '';
+    _calleeUid = queryParams['calleeUid'] ?? '';
+
     _initRenderers();
     _connectToSignalingServer();
     _createPeerConnection().then((pc) {
       _peerConnection = pc;
       _startLocalStream();
+    });
+
+    isCallConnected.addListener(() {
+      setState(() {}); // 通話状態が変化したら画面を更新
     });
   }
 
@@ -103,7 +114,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
         'type': 'candidate',
         'candidate': candidate.toMap(),
         'targetId': _selectedPeer,
-        'userId': _userId, // 自身の userId を追加
+        'userId': _doctorUid, // 自身の userId を追加
       });
     };
 
@@ -149,8 +160,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
           _handleCandidate(data);
           break;
         case 'peers':
-          _peers = List<String>.from(data['peers']);
-          _peersController.add(_peers);
+          // _handlePeersUpdate(data);
           break;
         default:
           break;
@@ -159,7 +169,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
 
     _sendSignalingMessage({
       'type': 'register',
-      'userId': _userId,
+      'userId': _doctorUid,
     });
   }
 
@@ -178,7 +188,7 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       'type': 'answer',
       'sdp': answer.sdp,
       'targetId': data['userId'], // オファー送信者の userId を使用
-      'userId': _userId, // 自身の userId を追加
+      'userId': _doctorUid, // 自身の userId を追加
     });
   }
 
@@ -195,24 +205,29 @@ class _WebRTCSampleState extends State<WebRTCSample> {
       int.parse(data['candidate']['sdpMLineIndex'].toString()),
     );
     await _peerConnection.addCandidate(candidate);
+
+    isCallConnected.value = true;
+  }
+
+  void _handlePeersUpdate(Map<String, dynamic> data) {
+    var peersList = List<String>.from(data['peers']);
+    if (peersList.contains(_calleeUid)) {
+      // 通話相手がオンラインならピア接続を開始
+      _createOffer();
+    } else {
+      // 通話相手がオフラインなら待機状態
+    }
   }
 
   Future<void> _createOffer() async {
-    if (_selectedPeer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a peer to connect to.')),
-      );
-      return;
-    }
-
     RTCSessionDescription offer = await _peerConnection.createOffer();
     await _peerConnection.setLocalDescription(offer);
 
     _sendSignalingMessage({
       'type': 'offer',
       'sdp': offer.sdp,
-      'targetId': _selectedPeer,
-      'userId': _userId, // 自身の userId を追加
+      'targetId': _calleeUid,
+      'userId': _doctorUid,
     });
   }
 
@@ -257,103 +272,64 @@ class _WebRTCSampleState extends State<WebRTCSample> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Flutter WebRTC Demo - $_userId'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: RTCVideoView(_localRenderer, mirror: true),
-                      ),
-                      Expanded(
-                        child: RTCVideoView(_remoteRenderer),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: StreamBuilder<List<String>>(
-                          stream: _peersController.stream,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const CircularProgressIndicator();
-                            }
-                            if (snapshot.hasError) {
-                              return Text('Error: ${snapshot.error}');
-                            }
-                            snapshot.data!
-                                .removeWhere((element) => element == _userId);
-                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                              return const Text('No peers available');
-                            }
-                            return ListView.builder(
-                              itemCount: snapshot.data!.length,
-                              itemBuilder: (context, index) {
-                                final peer = snapshot.data![index];
-                                final isSelected = peer == _selectedPeer;
-                                return ListTile(
-                                  title: Text(
-                                    peer,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.green
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                  tileColor:
-                                      isSelected ? Colors.green[100] : null,
-                                  onTap: isSelected
-                                      ? null
-                                      : () {
-                                          setState(() {
-                                            _selectedPeer = peer;
-                                          });
-                                          _createOffer();
-                                        },
-                                );
-                              },
-                            );
-                          },
+    if (!isCallConnected.value) {
+      // 通話待機画面
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('通話待機中...'),
+        ),
+        body: const Center(
+          child: Text('通話接続を待っています...'),
+        ),
+      );
+    } else {
+      // ビデオ通話画面
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('ビデオ通話中...'),
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: RTCVideoView(_localRenderer, mirror: true),
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: RTCVideoView(_remoteRenderer),
+                        ),
+                      ],
+                    ),
                   ),
+                ],
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: Icon(_isMuted ? Icons.mic_off : Icons.mic),
+                  onPressed: _toggleMute,
+                ),
+                IconButton(
+                  icon:
+                      Icon(_isCameraOff ? Icons.videocam_off : Icons.videocam),
+                  onPressed: _toggleCamera,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.call_end),
+                  onPressed: _endCall,
                 ),
               ],
             ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(
-                icon: Icon(_isMuted ? Icons.mic_off : Icons.mic),
-                onPressed: _toggleMute,
-              ),
-              IconButton(
-                icon: Icon(_isCameraOff ? Icons.videocam_off : Icons.videocam),
-                onPressed: _toggleCamera,
-              ),
-              IconButton(
-                icon: const Icon(Icons.call_end),
-                onPressed: _endCall,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    }
   }
 }
