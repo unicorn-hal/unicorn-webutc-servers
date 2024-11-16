@@ -1,18 +1,13 @@
 services:
-  cloud_messaging:
-    build: ./cloud_messaging/.
-    ports:
-      - "8080:8080"
-    environment:
-      TZ: "Asia/Tokyo"
-
-  stun_server:
-    build: ./webrtc/server/stun/.
+  stun:
+    build: ./stun/.
     ports:
       - "3478:3478"
+    depends_on:
+      - signaling
 
-  signaling_server:
-    build: ./webrtc/server/signaling/.
+  signaling:
+    build: ./signaling/.
     ports:
       - "3000:3000"
     environment:
