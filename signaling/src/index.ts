@@ -1,6 +1,6 @@
 import WebSocket, { Server, WebSocket as WS } from 'ws';
 
-const server = new Server({ port: 3000 });
+const server = new Server({ port: 8080 });
 
 // ユーザーIDとソケットをマッピングするオブジェクト
 const users: { [key: string]: WS } = {};
