@@ -1,4 +1,5 @@
-# Unicorn WebRTC Servers
+# [R.I.P] Unicorn WebRTC Servers
+Agora移行のため未使用
 
 ## STUNサーバー
 
